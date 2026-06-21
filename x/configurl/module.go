@@ -43,6 +43,7 @@ func NewProviderContainer() *ProviderContainer {
 func RegisterDefaultProviders(c *ProviderContainer) *ProviderContainer {
 	// Please keep the list in alphabetical order.
 	registerDisorderDialer(&c.StreamDialers, "disorder", c.StreamDialers.NewInstance)
+	registerDNSTTStreamDialer(&c.StreamDialers, "dnstt")
 	registerDO53StreamDialer(&c.StreamDialers, "do53", c.StreamDialers.NewInstance, c.PacketDialers.NewInstance)
 	registerDOHStreamDialer(&c.StreamDialers, "doh", c.StreamDialers.NewInstance)
 
@@ -66,6 +67,10 @@ func RegisterDefaultProviders(c *ProviderContainer) *ProviderContainer {
 	registerTLSStreamDialer(&c.StreamDialers, "tls", c.StreamDialers.NewInstance)
 
 	registerTLSFragStreamDialer(&c.StreamDialers, "tlsfrag", c.StreamDialers.NewInstance)
+
+	registerTURNStreamDialer(&c.StreamDialers, "turn")
+	registerTURNPacketDialer(&c.PacketDialers, "turn")
+	registerTURNPacketListener(&c.PacketListeners, "turn")
 
 	registerWebsocketStreamDialer(&c.StreamDialers, "ws", c.StreamDialers.NewInstance)
 	registerWebsocketPacketDialer(&c.PacketDialers, "ws", c.StreamDialers.NewInstance)
@@ -140,6 +145,14 @@ func SanitizeConfig(configStr string) (string, error) {
 		case "override", "split", "tls", "tlsfrag":
 			// No sanitization needed
 			part = config.URL.String()
+		case "dnstt":
+			// dnstt carries no secrets: pubkey and domain are public.
+			part = config.URL.String()
+		case "turn":
+			part, err = sanitizeTURNURL(&config.URL)
+			if err != nil {
+				return "", err
+			}
 		default:
 			part = scheme + "://UNKNOWN"
 		}

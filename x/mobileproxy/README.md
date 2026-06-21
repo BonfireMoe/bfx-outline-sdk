@@ -591,6 +591,37 @@ val proxy = Mobileproxy.runProxy("localhost:0", dialer)
 proxy.stop()
 ```
 
+#### DNS tunnel (`dnstt://`)
+
+Tunnels TCP through DNS using the [dnstt](https://www.bamsoftware.com/git/dnstt.git)
+protocol (KCP + smux over Noise). One DNS transport is required: DoH, DoT, or plain UDP.
+
+```
+dnstt:?domain=t.example.com&pubkey=<32-byte-hex>&doh=https://resolver.example/dns-query
+dnstt:?domain=t.example.com&pubkey=<32-byte-hex>&dot=resolver.example:853
+dnstt:?domain=t.example.com&pubkey=<32-byte-hex>&udp=8.8.8.8:53
+```
+
+dnstt is a point-to-point pipe: the destination address passed to the dialer is
+ignored; the dnstt server forwards every connection to whatever local address it
+was configured for.
+
+#### TURN tunnel (`turn://`)
+
+Tunnels UDP packets through a [TURN](https://datatracker.ietf.org/doc/html/rfc8656)
+relay. Optionally wraps the data path in DTLS for confidentiality and to look
+like WebRTC media.
+
+```
+turn://<user>:<pass>@<turn-host>:<turn-port>?peer=<server-ip:port>[&transport=udp|tcp][&dtls=1]
+```
+
+`turn` registers as a `PacketDialer` and `PacketListener`. A `StreamDialer`
+registration is also wired so that the scheme is discoverable from
+`NewStreamDialerFromConfig`, but it returns an error at `DialStream` time —
+layer a reliable transport on top (for example `ss://...|turn://...`) to get
+a usable stream.
+
 ### Using the Smart Proxy
 
 The Smart Proxy can automatically try multiple strategies to unblock access to the test domains you specify.

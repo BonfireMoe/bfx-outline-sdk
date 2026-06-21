@@ -24,9 +24,17 @@ require (
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	golang.getoutline.org/sdk v0.0.22
 	golang.org/x/mobile v0.0.0-20240520174638-fa72addaaa1b
-	golang.org/x/net v0.44.0
-	golang.org/x/sys v0.36.0
-	golang.org/x/term v0.35.0
+	golang.org/x/net v0.48.0
+	golang.org/x/sys v0.39.0
+	golang.org/x/term v0.38.0
+)
+
+require (
+	github.com/pion/dtls/v2 v2.2.12
+	github.com/pion/turn/v2 v2.1.6
+	github.com/xtaci/kcp-go/v5 v5.6.8
+	github.com/xtaci/smux v1.5.24
+	www.bamsoftware.com/git/dnstt.git v1.20260501.0
 )
 
 require (
@@ -61,7 +69,6 @@ require (
 	github.com/eycorsican/go-tun2socks v1.16.11 // indirect
 	github.com/flynn/noise v1.0.1-0.20220214164934-d803f5c4b0f4 // indirect
 	github.com/fxamacker/cbor/v2 v2.5.0 // indirect
-	github.com/gaukas/godicttls v0.0.4 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -74,16 +81,17 @@ require (
 	github.com/josharian/native v1.1.1-0.20230202152459-5c7d0dd6ab86 // indirect
 	github.com/jsimonetti/rtnetlink v1.3.5 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.6 // indirect
+	github.com/klauspost/reedsolomon v1.12.0 // indirect
 	github.com/libp2p/go-reuseport v0.4.0 // indirect
 	github.com/marusama/semaphore v0.0.0-20171214154724-565ffd8e868a // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
 	github.com/mdlayher/socket v0.5.0 // indirect
-	github.com/miekg/dns v1.1.56 // indirect
+	github.com/miekg/dns v1.1.72 // indirect
 	github.com/mroth/weightedrand v1.0.0 // indirect
 	github.com/onsi/ginkgo/v2 v2.12.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pion/datachannel v1.5.5 // indirect
-	github.com/pion/dtls/v2 v2.2.7 // indirect
 	github.com/pion/ice/v2 v2.3.24 // indirect
 	github.com/pion/interceptor v0.1.25 // indirect
 	github.com/pion/logging v0.2.2 // indirect
@@ -96,7 +104,6 @@ require (
 	github.com/pion/srtp/v2 v2.0.18 // indirect
 	github.com/pion/stun v0.6.1 // indirect
 	github.com/pion/transport/v2 v2.2.4 // indirect
-	github.com/pion/turn/v2 v2.1.3 // indirect
 	github.com/pion/webrtc/v3 v3.2.40 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -105,13 +112,16 @@ require (
 	github.com/refraction-networking/ed25519 v0.1.2 // indirect
 	github.com/refraction-networking/gotapdance v1.7.10 // indirect
 	github.com/refraction-networking/obfs4 v0.1.2 // indirect
-	github.com/refraction-networking/utls v1.3.3 // indirect
+	github.com/refraction-networking/utls v1.6.6 // indirect
 	github.com/sergeyfrolov/bsbuffer v0.0.0-20180903213811-94e85abb8507 // indirect
 	github.com/shadowsocks/go-shadowsocks2 v0.1.5 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/syndtr/gocapability v0.0.0-20170704070218-db04d3cc01c8 // indirect
 	github.com/tailscale/goupnp v1.0.1-0.20210804011211-c64d0f06ea05 // indirect
 	github.com/tailscale/netlink v1.1.1-0.20211101221916-cabfb018fe85 // indirect
+	github.com/templexxx/cpu v0.1.0 // indirect
+	github.com/templexxx/xorsimd v0.4.2 // indirect
+	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect
 	github.com/wader/filtertransport v0.0.0-20200316221534-bdd9e61eee78 // indirect
 	github.com/wlynxg/anet v0.0.1 // indirect
@@ -120,14 +130,14 @@ require (
 	go.uber.org/mock v0.4.0 // indirect
 	go4.org/mem v0.0.0-20220726221520-4f986261bf13 // indirect
 	go4.org/netipx v0.0.0-20230824141953-6213f710f925 // indirect
-	golang.org/x/crypto v0.42.0 // indirect
+	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20231108232855-2478ac86f678 // indirect
-	golang.org/x/mod v0.28.0 // indirect
-	golang.org/x/sync v0.17.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
-	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.37.0 // indirect
+	golang.org/x/mod v0.31.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
+	golang.org/x/time v0.14.0 // indirect
+	golang.org/x/tools v0.40.0 // indirect
 	golang.org/x/tools/go/packages/packagestest v0.1.1-deprecated // indirect
 	golang.zx2c4.com/wireguard v0.0.0-20230325221338-052af4a8072b // indirect
 	golang.zx2c4.com/wireguard/windows v0.5.3 // indirect
