@@ -594,13 +594,21 @@ proxy.stop()
 #### DNS tunnel (`dnstt://`)
 
 Tunnels TCP through DNS using the [dnstt](https://www.bamsoftware.com/git/dnstt.git)
-protocol (KCP + smux over Noise). One DNS transport is required: DoH, DoT, or plain UDP.
+protocol (KCP + smux over Noise). At most one DNS transport may be given: DoH, DoT,
+or plain UDP.
 
 ```
 dnstt:?domain=t.example.com&pubkey=<32-byte-hex>&doh=https://resolver.example/dns-query
 dnstt:?domain=t.example.com&pubkey=<32-byte-hex>&dot=resolver.example:853
 dnstt:?domain=t.example.com&pubkey=<32-byte-hex>&udp=8.8.8.8:53
+dnstt:?domain=t.example.com&pubkey=<32-byte-hex>
 ```
+
+If the transport is omitted (last form above), dnstt falls back to a default
+resolver supplied by the caller. The Smart Proxy uses this to make dnstt tunnel
+through whichever resolver it selected from the config's `dns` list, so you do
+not have to hard-code one. Outside the Smart Proxy, building a resolver-less
+dnstt config fails unless a default resolver is configured in the context.
 
 dnstt is a point-to-point pipe: the destination address passed to the dialer is
 ignored; the dnstt server forwards every connection to whatever local address it

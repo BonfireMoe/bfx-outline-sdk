@@ -35,6 +35,7 @@ import (
 
 	"github.com/xtaci/kcp-go/v5"
 	"github.com/xtaci/smux"
+	sdkdns "golang.getoutline.org/sdk/dns"
 	"golang.getoutline.org/sdk/transport"
 	"www.bamsoftware.com/git/dnstt.git/dns"
 	"www.bamsoftware.com/git/dnstt.git/noise"
@@ -57,6 +58,11 @@ const (
 	TransportDoT
 	// TransportUDP sends DNS messages over plain UDP.
 	TransportUDP
+	// TransportResolver tunnels DNS messages through the [sdkdns.Resolver] in
+	// Config.Resolver rather than opening dnstt's own connection to a resolver.
+	// This lets dnstt reuse a resolver selected elsewhere (e.g. the resolver the
+	// smart dialer chose from its config's "dns" list).
+	TransportResolver
 )
 
 // Config configures a [StreamDialer].
@@ -76,6 +82,11 @@ type Config struct {
 	DoTAddr string
 	// UDPAddr is the plain-UDP DNS resolver host:port, e.g. "8.8.8.8:53".
 	UDPAddr string
+	// Resolver, when set with Kind == TransportResolver, is used as the DNS
+	// transport: dnstt tunnels its DNS messages (TXT queries under Domain)
+	// through this resolver instead of dialing DoHURL/DoTAddr/UDPAddr directly.
+	// It lets dnstt reuse a resolver configured elsewhere.
+	Resolver sdkdns.Resolver
 }
 
 // dnsNameCapacity computes how many bytes are available for encoded data in a
@@ -134,8 +145,12 @@ func NewStreamDialer(cfg Config) (*StreamDialer, error) {
 		if cfg.UDPAddr == "" {
 			return nil, errors.New("dnstt: udp address is required for UDP transport")
 		}
+	case TransportResolver:
+		if cfg.Resolver == nil {
+			return nil, errors.New("dnstt: resolver is required for resolver transport")
+		}
 	default:
-		return nil, errors.New("dnstt: transport kind is required (doh/dot/udp)")
+		return nil, errors.New("dnstt: transport kind is required (doh/dot/udp/resolver)")
 	}
 	return &StreamDialer{cfg: cfg, domain: domain}, nil
 }
@@ -334,6 +349,9 @@ func (d *StreamDialer) openTransport() (net.PacketConn, net.Addr, func() error, 
 			return nil, nil, nil, fmt.Errorf("dnstt: listen UDP: %w", err)
 		}
 		return pc, addr, func() error { return pc.Close() }, nil
+	case TransportResolver:
+		pc := newResolverPacketConn(d.cfg.Resolver, resolverNumSenders)
+		return pc, turbotunnel.DummyAddr{}, func() error { return pc.Close() }, nil
 	default:
 		return nil, nil, nil, errors.New("dnstt: unsupported transport kind")
 	}

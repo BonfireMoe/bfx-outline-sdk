@@ -344,13 +344,19 @@ func (f *StrategyFinder) findDNS(ctx context.Context, testDomains []string, dnsC
 }
 
 func (f *StrategyFinder) findTLS(
-	ctx context.Context, testDomains []string, baseDialer transport.StreamDialer, tlsConfig []string,
+	ctx context.Context, testDomains []string, baseDialer transport.StreamDialer, tlsConfig []string, defaultResolver dns.Resolver,
 ) (transport.StreamDialer, string, error) {
 	if len(tlsConfig) == 0 {
 		return nil, "", errors.New("config for TLS is empty. Please specify at least one transport")
 	}
 	var configModule = configurl.NewDefaultProviders()
 	configModule.StreamDialers.BaseInstance = baseDialer
+
+	// Let resolver-less DNS-tunnel transports (e.g. dnstt) reuse the resolver we
+	// already selected from the "dns" config instead of requiring their own.
+	if defaultResolver != nil {
+		ctx = configurl.WithDefaultDNSResolver(ctx, defaultResolver)
+	}
 
 	raceCtx, raceDone := context.WithCancel(ctx)
 	defer raceDone()
@@ -493,6 +499,10 @@ func (f *StrategyFinder) newProxylessDialer(
 	if err != nil {
 		return nil, nil, "", err
 	}
+	// Hold on to the raw (uncached) selected resolver so DNS-tunnel transports
+	// such as dnstt can reuse it when their config omits a resolver. It is nil
+	// for the system resolver, in which case no default is offered.
+	defaultResolver := resolver
 	var dnsDialer transport.StreamDialer
 	if resolver == nil {
 		if _, ok := f.StreamDialer.(*transport.TCPDialer); !ok {
@@ -510,7 +520,7 @@ func (f *StrategyFinder) newProxylessDialer(
 	if len(config.TLS) == 0 {
 		return dnsDialer, dnsConfig, "", nil
 	}
-	sd, tlsConfig, err := f.findTLS(ctx, testDomains, dnsDialer, config.TLS)
+	sd, tlsConfig, err := f.findTLS(ctx, testDomains, dnsDialer, config.TLS, defaultResolver)
 	if err != nil {
 		return nil, nil, "", err
 	}

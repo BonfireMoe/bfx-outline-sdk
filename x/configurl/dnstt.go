@@ -20,20 +20,45 @@ import (
 	"fmt"
 	"net/url"
 
+	"golang.getoutline.org/sdk/dns"
 	"golang.getoutline.org/sdk/transport"
 	"golang.getoutline.org/sdk/x/dnstt"
 	"www.bamsoftware.com/git/dnstt.git/noise"
 )
 
+// defaultDNSResolverContextKey keys the context value holding the default DNS
+// resolver that DNS-tunnel transports fall back to.
+type defaultDNSResolverContextKey struct{}
+
+// WithDefaultDNSResolver returns a child context carrying a default DNS resolver
+// that DNS-tunnel transports (currently dnstt) tunnel through when their own
+// config does not specify a resolver (no doh/dot/udp). The smart dialer uses
+// this so a resolver-less dnstt config reuses the resolver it selected from the
+// config's "dns" list.
+func WithDefaultDNSResolver(ctx context.Context, resolver dns.Resolver) context.Context {
+	return context.WithValue(ctx, defaultDNSResolverContextKey{}, resolver)
+}
+
+// defaultDNSResolverFromContext returns the default DNS resolver carried by ctx,
+// if any. The boolean is false when no (non-nil) resolver is present.
+func defaultDNSResolverFromContext(ctx context.Context) (dns.Resolver, bool) {
+	resolver, ok := ctx.Value(defaultDNSResolverContextKey{}).(dns.Resolver)
+	return resolver, ok && resolver != nil
+}
+
 // parseDNSTTConfig pulls the dnstt parameters out of a parsed configurl URL.
 //
 // The dnstt scheme uses opaque form so that the query string can sit alongside
 // arbitrary other dnstt parameters without colliding with URL host/path
-// semantics. Supported forms (any one transport selector is required):
+// semantics. Supported forms (at most one transport selector):
 //
 //	dnstt:?domain=t.example.com&pubkey=<64-hex>&doh=https://doh.example/dns-query
 //	dnstt:?domain=t.example.com&pubkey=<64-hex>&dot=resolver.example:853
 //	dnstt:?domain=t.example.com&pubkey=<64-hex>&udp=8.8.8.8:53
+//	dnstt:?domain=t.example.com&pubkey=<64-hex>
+//
+// When no selector is given, Kind is left as dnstt.TransportInvalid and the
+// caller is expected to supply a default resolver (see registerDNSTTStreamDialer).
 func parseDNSTTConfig(u url.URL) (dnstt.Config, error) {
 	// configurl puts the query string in either RawQuery (for dnstt://?...) or
 	// embedded inside Opaque (for dnstt:?...). Both forms should work.
@@ -87,7 +112,8 @@ func parseDNSTTConfig(u url.URL) (dnstt.Config, error) {
 	}
 	switch selected {
 	case 0:
-		return dnstt.Config{}, errors.New("dnstt: one of doh, dot, or udp is required")
+		// No explicit resolver. Leave Kind as dnstt.TransportInvalid; the builder
+		// falls back to a default resolver from the context, if one is configured.
 	case 1:
 		// ok
 	default:
@@ -97,7 +123,7 @@ func parseDNSTTConfig(u url.URL) (dnstt.Config, error) {
 }
 
 func registerDNSTTStreamDialer(r TypeRegistry[transport.StreamDialer], typeID string) {
-	r.RegisterType(typeID, func(_ context.Context, config *Config) (transport.StreamDialer, error) {
+	r.RegisterType(typeID, func(ctx context.Context, config *Config) (transport.StreamDialer, error) {
 		// dnstt is a leaf transport: it opens its own connections to the DNS
 		// resolver and does not layer on a base StreamDialer. Reject configs
 		// that try to stack something below it.
@@ -107,6 +133,17 @@ func registerDNSTTStreamDialer(r TypeRegistry[transport.StreamDialer], typeID st
 		cfg, err := parseDNSTTConfig(config.URL)
 		if err != nil {
 			return nil, err
+		}
+		if cfg.Kind == dnstt.TransportInvalid {
+			// The config did not specify doh/dot/udp. Fall back to the default
+			// resolver carried by the context (e.g. the resolver the smart dialer
+			// selected from its "dns" list).
+			resolver, ok := defaultDNSResolverFromContext(ctx)
+			if !ok {
+				return nil, errors.New("dnstt: one of doh, dot, or udp is required, or a default resolver must be configured")
+			}
+			cfg.Resolver = resolver
+			cfg.Kind = dnstt.TransportResolver
 		}
 		return dnstt.NewStreamDialer(cfg)
 	})

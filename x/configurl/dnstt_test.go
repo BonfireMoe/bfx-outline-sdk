@@ -16,11 +16,14 @@ package configurl
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"golang.getoutline.org/sdk/dns"
 	"golang.getoutline.org/sdk/x/dnstt"
+	"golang.org/x/net/dns/dnsmessage"
 )
 
 // 64 hex chars => 32 bytes, the expected length of an X25519 Noise public key.
@@ -71,10 +74,12 @@ func TestParseDNSTTConfigShortPubKey(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestParseDNSTTConfigMissingTransport(t *testing.T) {
-	_, err := mustParseDNSTT(t, "dnstt:?domain=t.example.com&pubkey="+validPubKey)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "one of")
+func TestParseDNSTTConfigNoTransportIsOptional(t *testing.T) {
+	// Omitting the resolver is no longer a parse error: Kind is left unset so the
+	// builder can fall back to a default resolver from the context.
+	cfg, err := mustParseDNSTT(t, "dnstt:?domain=t.example.com&pubkey="+validPubKey)
+	require.NoError(t, err)
+	require.Equal(t, dnstt.TransportInvalid, cfg.Kind)
 }
 
 func TestParseDNSTTConfigMultipleTransports(t *testing.T) {
@@ -96,6 +101,29 @@ func TestDNSTTStreamDialerConstructionInvalidConfig(t *testing.T) {
 	_, err := providers.NewStreamDialer(context.Background(),
 		"dnstt:?domain=t.example.com&pubkey=BAD&udp=8.8.8.8:53")
 	require.Error(t, err)
+}
+
+func TestDNSTTStreamDialerMissingResolverErrors(t *testing.T) {
+	// Without an explicit resolver and without a default resolver in the context,
+	// construction must fail with a clear message.
+	providers := NewDefaultProviders()
+	_, err := providers.NewStreamDialer(context.Background(),
+		"dnstt:?domain=t.example.com&pubkey="+validPubKey)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "resolver")
+}
+
+func TestDNSTTStreamDialerUsesDefaultResolver(t *testing.T) {
+	// With a default resolver in the context, a resolver-less dnstt config builds.
+	providers := NewDefaultProviders()
+	resolver := dns.FuncResolver(func(context.Context, dnsmessage.Question) (*dnsmessage.Message, error) {
+		return nil, errors.New("not called during construction")
+	})
+	ctx := WithDefaultDNSResolver(context.Background(), resolver)
+	dialer, err := providers.NewStreamDialer(ctx,
+		"dnstt:?domain=t.example.com&pubkey="+validPubKey)
+	require.NoError(t, err)
+	require.NotNil(t, dialer)
 }
 
 func TestDNSTTSanitizeConfig(t *testing.T) {
