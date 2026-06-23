@@ -500,8 +500,7 @@ func (f *StrategyFinder) newProxylessDialer(
 		return nil, nil, "", err
 	}
 	// Hold on to the raw (uncached) selected resolver so DNS-tunnel transports
-	// such as dnstt can reuse it when their config omits a resolver. It is nil
-	// for the system resolver, in which case no default is offered.
+	// such as dnstt can reuse it when their config omits a resolver.
 	defaultResolver := resolver
 	var dnsDialer transport.StreamDialer
 	if resolver == nil {
@@ -509,6 +508,11 @@ func (f *StrategyFinder) newProxylessDialer(
 			return nil, nil, "", fmt.Errorf("cannot use system resolver with base dialer of type %T", f.StreamDialer)
 		}
 		dnsDialer = f.StreamDialer
+		// "system" has no resolver object of its own; back a resolver-less dnstt
+		// with the OS resolver so it can still tunnel. See newSystemResolver for
+		// platform specifics (native android_res_nsend on Android 29+; the Go
+		// stub resolver elsewhere, which does not work on iOS).
+		defaultResolver = newSystemResolver()
 	} else {
 		resolver = newSimpleLRUCacheResolver(resolver, 100)
 		dnsDialer, err = dns.NewStreamDialer(resolver, f.StreamDialer)
